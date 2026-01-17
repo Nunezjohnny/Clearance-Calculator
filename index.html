@@ -5,9 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Clearance - Find Your Breathing Room</title>
 
+  <!-- React 18 UMD -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+
+  <!-- Babel for JSX in-browser -->
   <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
 
   <!-- Lucide UMD (NOT lucide-react) -->
@@ -20,8 +25,8 @@
   <script type="text/babel">
     const { useState, useEffect } = React;
 
-    // Lucide UMD icon helper for React
-    function Icon({ name, className }) {
+    // Lucide UMD helper: renders <i data-lucide="..."> and then lucide.createIcons() swaps it to SVG.
+    function Icon({ name, className = "" }) {
       return <i data-lucide={name} className={className}></i>;
     }
 
@@ -55,14 +60,15 @@
       const [fees, setFees] = useState(0);
       const [neg, setNeg] = useState(0);
       const [side, setSide] = useState(0);
+
       const [commits, setCommits] = useState([]);
 
-      // IMPORTANT: Run Lucide after React renders icons
+      // IMPORTANT: run Lucide after any render (so icons appear when UI changes)
       useEffect(() => {
         if (window.lucide && window.lucide.createIcons) {
           window.lucide.createIcons();
         }
-      }, [step, showAdv]); // rerun when UI sections appear/disappear
+      });
 
       const fmt = (n) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n);
       const p = (v) => parseFloat(v) || 0;
@@ -74,7 +80,14 @@
 
       const fixed = p(rent) + p(util) + p(debt) + p(ins) + p(other);
 
-      const cGas = p(gas), cGroc = p(groc), cSubs = p(subs), cEat = p(eat), cShop = p(shop), cEnt = p(ent), cOtherV = p(otherV);
+      const cGas = p(gas),
+            cGroc = p(groc),
+            cSubs = p(subs),
+            cEat = p(eat),
+            cShop = p(shop),
+            cEnt = p(ent),
+            cOtherV = p(otherV);
+
       const variable = cGas + cGroc + cSubs + cEat + cShop + cEnt + cOtherV;
 
       const baseline = monthInc - fixed - variable;
@@ -85,7 +98,9 @@
         newShop !== null && newShop < cShop,
         newGas !== null && newGas < cGas,
         newEnt !== null && newEnt < cEnt,
-        fees > 0, neg > 0, side > 0
+        fees > 0,
+        neg > 0,
+        side > 0
       ].filter(Boolean).length;
 
       const savings =
@@ -94,7 +109,8 @@
         (newShop !== null ? cShop - newShop : 0) +
         (newGas !== null ? cGas - newGas : 0) +
         (newEnt !== null ? cEnt - newEnt : 0) +
-        fees + neg;
+        fees +
+        neg;
 
       const newClear = baseline + savings + side;
       const improve = newClear - baseline;
@@ -102,12 +118,22 @@
       const complete = monthInc > 0 && (fixed > 0 || variable > 0);
 
       const fill = (set, val) => set(val.toString());
+
       const reset = () => {
-        setNewSubs(null); setNewEat(null); setNewShop(null); setNewGas(null); setNewEnt(null);
-        setFees(0); setNeg(0); setSide(0); setCommits([]);
+        setNewSubs(null);
+        setNewEat(null);
+        setNewShop(null);
+        setNewGas(null);
+        setNewEnt(null);
+        setFees(0);
+        setNeg(0);
+        setSide(0);
+        setCommits([]);
       };
 
-      const toggle = (n) => setCommits(commits.includes(n) ? commits.filter(c => c !== n) : [...commits, n]);
+      const toggle = (n) => {
+        setCommits(commits.includes(n) ? commits.filter(c => c !== n) : [...commits, n]);
+      };
 
       const Inp = ({ l, v, set }) => (
         <div>
@@ -142,6 +168,7 @@
             <button
               onClick={() => fill(set, avg)}
               className="px-3 py-2.5 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-sm font-semibold"
+              type="button"
             >
               Avg
             </button>
@@ -149,6 +176,99 @@
         </div>
       );
 
+      const RedSlide = ({ l, e, cur, val, set, com, tog }) => {
+        const sav = cur - val;
+        const pct = cur > 0 ? ((sav / cur) * 100).toFixed(0) : 0;
+
+        return (
+          <div className="bg-gray-50 p-4 rounded-lg">
+            <div className="flex justify-between items-start mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-2xl">{e}</span>
+                <div>
+                  <div className="font-semibold text-gray-900">{l}</div>
+                  <div className="text-sm text-gray-600">Currently: ${fmt(cur)}/mo</div>
+                </div>
+              </div>
+              {sav > 0 && (
+                <button
+                  onClick={tog}
+                  type="button"
+                  className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
+                    com ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                  }`}
+                >
+                  {com ? '✓ Committed' : 'Commit'}
+                </button>
+              )}
+            </div>
+
+            <input
+              type="range"
+              min="0"
+              max={cur}
+              step="5"
+              value={val}
+              onChange={e => set(parseFloat(e.target.value))}
+              className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-purple-600"
+            />
+
+            <div className="flex justify-between items-center mt-2">
+              <span className="text-sm font-semibold text-gray-900">New: ${fmt(val)}/mo</span>
+              {sav > 0 && (
+                <span className="text-sm font-semibold text-green-600">
+                  Save ${fmt(sav)}/mo ({pct}% less)
+                </span>
+              )}
+            </div>
+          </div>
+        );
+      };
+
+      const AddSlide = ({ l, e, val, set, max, step, com, tog }) => (
+        <div className="bg-gray-50 p-4 rounded-lg">
+          <div className="flex justify-between items-start mb-3">
+            <div className="flex items-center gap-2">
+              <span className="text-2xl">{e}</span>
+              <div className="font-semibold text-gray-900">{l}</div>
+            </div>
+            {val > 0 && (
+              <button
+                onClick={tog}
+                type="button"
+                className={`px-3 py-1.5 rounded-lg text-sm font-semibold ${
+                  com ? 'bg-green-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                }`}
+              >
+                {com ? '✓ Committed' : 'Commit'}
+              </button>
+            )}
+          </div>
+
+          <input
+            type="range"
+            min="0"
+            max={max}
+            step={step}
+            value={val}
+            onChange={e => set(parseFloat(e.target.value))}
+            className="w-full h-2 bg-gray-300 rounded-lg appearance-none cursor-pointer accent-purple-600"
+          />
+
+          <div className="flex justify-between items-center mt-2">
+            <span className="text-sm font-semibold text-gray-900">${fmt(val)}/mo</span>
+            {val > 0 && (
+              <span className="text-sm font-semibold text-green-600">
+                +${fmt(val)}/mo extra
+              </span>
+            )}
+          </div>
+        </div>
+      );
+
+      // -----------------
+      // STEP 1
+      // -----------------
       if (step === 1) {
         return (
           <div className="min-h-screen bg-gradient-to-br from-purple-600 to-purple-800 p-4 md:p-8">
@@ -164,6 +284,7 @@
                     <Icon name="dollar-sign" className="w-6 h-6 text-purple-600" />
                     Take-Home Pay
                   </h2>
+                  <p className="text-sm text-gray-600 mb-4">After taxes—what actually hits your account</p>
 
                   <div className="flex gap-4 mb-4 flex-wrap">
                     <div className="flex-1 min-w-[200px]">
@@ -173,6 +294,7 @@
                         set={setIncome}
                       />
                     </div>
+
                     <div className="min-w-[200px]">
                       <label className="block text-sm font-semibold text-gray-700 mb-1">Pay Frequency</label>
                       <select
@@ -196,6 +318,8 @@
 
                 <div className="mb-8 pt-8 border-t-2 border-gray-200">
                   <h2 className="text-xl font-bold mb-2 text-gray-900">Essential Monthly Bills</h2>
+                  <p className="text-sm text-gray-600 mb-4">Use monthly estimates. If you're not sure, use Avg.</p>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Inp l="Rent/Mortgage" v={rent} set={setRent} />
                     <Inp l="Utilities" v={util} set={setUtil} />
@@ -209,30 +333,42 @@
                 <div className="mb-8 pt-8 border-t-2 border-gray-200">
                   <button
                     onClick={() => setShowAdv(!showAdv)}
+                    type="button"
                     className="w-full flex items-center justify-between text-left mb-4 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg"
                   >
                     <span className="text-lg font-bold text-gray-900">Advanced (Optional)</span>
-                    <Icon name={showAdv ? "chevron-up" : "chevron-down"} className="w-5 h-5 text-gray-700" />
+                    {showAdv
+                      ? <Icon name="chevron-up" className="w-5 h-5 text-gray-800" />
+                      : <Icon name="chevron-down" className="w-5 h-5 text-gray-800" />
+                    }
                   </button>
 
                   {showAdv && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <Inp l="Insurance" v={ins} set={setIns} />
-                      <Inp l="Other Fixed Bills" v={other} set={setOther} />
-                      <InpAvg l="Eating Out/Delivery" v={eat} set={setEat} avg={250} />
-                      <InpAvg l="Shopping/Clothes" v={shop} set={setShop} avg={100} />
-                      <InpAvg l="Entertainment" v={ent} set={setEnt} avg={80} />
-                      <Inp l="Other Spending" v={otherV} set={setOtherV} />
-                    </div>
+                    <>
+                      <p className="text-sm text-gray-600 mb-4">Add these if they apply to you. Use monthly estimates.</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <Inp l="Insurance" v={ins} set={setIns} />
+                        <Inp l="Other Fixed Bills" v={other} set={setOther} />
+                        <InpAvg l="Eating Out/Delivery" v={eat} set={setEat} avg={250} />
+                        <InpAvg l="Shopping/Clothes" v={shop} set={setShop} avg={100} />
+                        <InpAvg l="Entertainment" v={ent} set={setEnt} avg={80} />
+                        <Inp l="Other Spending" v={otherV} set={setOtherV} />
+                      </div>
+                    </>
                   )}
                 </div>
 
                 {complete && (
-                  <div className={`rounded-xl p-8 mb-6 text-white text-center ${baseline >= 0 ? 'bg-gradient-to-br from-purple-600 to-purple-800' : 'bg-gradient-to-br from-pink-500 to-red-500'}`}>
+                  <div className={`rounded-xl p-8 mb-6 text-white text-center ${
+                    baseline >= 0 ? 'bg-gradient-to-br from-purple-600 to-purple-800' : 'bg-gradient-to-br from-pink-500 to-red-500'
+                  }`}>
                     <div className="text-sm uppercase tracking-wider opacity-90 font-semibold mb-2">
                       {baseline >= 0 ? 'Safe-to-Spend (This Month)' : "You're Short By"}
                     </div>
                     <div className="text-6xl font-bold mb-2">${fmt(Math.abs(baseline))}</div>
+                    <div className="text-base opacity-90 mb-4">
+                      {baseline >= 0 ? "Money left after all your current spending" : "More going out than coming in"}
+                    </div>
                     <div className="text-sm opacity-80 bg-white bg-opacity-15 p-3 rounded-lg">
                       Income: ${fmt(monthInc)} − Fixed: ${fmt(fixed)} − Variable: ${fmt(variable)}
                     </div>
@@ -242,8 +378,11 @@
                 <button
                   onClick={() => setStep(2)}
                   disabled={!complete}
+                  type="button"
                   className={`w-full p-4 rounded-xl text-lg font-bold flex items-center justify-center gap-2 ${
-                    complete ? 'bg-gradient-to-br from-purple-600 to-purple-800 text-white hover:shadow-lg cursor-pointer' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    complete
+                      ? 'bg-gradient-to-br from-purple-600 to-purple-800 text-white hover:shadow-lg cursor-pointer'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                   }`}
                 >
                   Find Breathing Room
@@ -255,25 +394,189 @@
         );
       }
 
-      // Step 2 (kept simple for this fix)
+      // -----------------
+      // STEP 2
+      // -----------------
       return (
         <div className="min-h-screen bg-gradient-to-br from-purple-600 to-purple-800 p-4 md:p-8">
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-8 text-white">
               <h1 className="text-5xl font-bold mb-2">Clearance</h1>
-              <p className="text-xl opacity-95 font-medium">Your what-if screen renders now ✅</p>
+              <p className="text-xl opacity-95 font-medium">Try 1–2 changes to create breathing room</p>
             </div>
 
             <div className="bg-white rounded-2xl p-6 md:p-8 shadow-2xl mb-6">
-              <div className="rounded-xl p-8 mb-6 text-white text-center bg-gradient-to-br from-purple-600 to-purple-800">
+              <div className={`rounded-xl p-8 mb-8 text-white text-center ${
+                baseline >= 0 ? 'bg-gradient-to-br from-purple-600 to-purple-800' : 'bg-gradient-to-br from-pink-500 to-red-500'
+              }`}>
                 <div className="text-sm uppercase tracking-wider opacity-90 font-semibold mb-2">
-                  Current Safe-to-Spend
+                  {baseline >= 0 ? 'Current Safe-to-Spend' : "Currently Short By"}
                 </div>
                 <div className="text-6xl font-bold mb-2">${fmt(Math.abs(baseline))}</div>
               </div>
 
+              <div className="mb-8">
+                <div className="flex justify-between items-center mb-2">
+                  <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2 m-0">
+                    <Icon name="zap" className="w-6 h-6 text-yellow-500" />
+                    What-If Levers
+                  </h2>
+
+                  {active > 0 && (
+                    <button
+                      onClick={reset}
+                      type="button"
+                      className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-semibold text-purple-600 flex items-center gap-1"
+                    >
+                      <Icon name="rotate-ccw" className="w-4 h-4" />
+                      Reset
+                    </button>
+                  )}
+                </div>
+
+                <p className="text-sm text-gray-600 mb-2">Pick 1–2 changes you'll actually try this week</p>
+
+                {active > 2 && (
+                  <div className="bg-yellow-100 border border-yellow-400 rounded-lg p-3 mb-4 text-sm text-yellow-900">
+                    ⚠️ You picked {active} changes. Try focusing on just 1-2 for better results.
+                  </div>
+                )}
+
+                <div className="flex flex-col gap-6 mt-4">
+                  {cSubs > 0 && (
+                    <RedSlide
+                      l="Subscriptions"
+                      e="📱"
+                      cur={cSubs}
+                      val={newSubs !== null ? newSubs : cSubs}
+                      set={setNewSubs}
+                      com={commits.includes('subs')}
+                      tog={() => toggle('subs')}
+                    />
+                  )}
+                  {cGas > 0 && (
+                    <RedSlide
+                      l="Gas/Transportation"
+                      e="🚗"
+                      cur={cGas}
+                      val={newGas !== null ? newGas : cGas}
+                      set={setNewGas}
+                      com={commits.includes('gas')}
+                      tog={() => toggle('gas')}
+                    />
+                  )}
+                  {cEat > 0 && (
+                    <RedSlide
+                      l="Eating Out/Delivery"
+                      e="🍔"
+                      cur={cEat}
+                      val={newEat !== null ? newEat : cEat}
+                      set={setNewEat}
+                      com={commits.includes('eat')}
+                      tog={() => toggle('eat')}
+                    />
+                  )}
+                  {cShop > 0 && (
+                    <RedSlide
+                      l="Shopping/Clothes"
+                      e="🛍️"
+                      cur={cShop}
+                      val={newShop !== null ? newShop : cShop}
+                      set={setNewShop}
+                      com={commits.includes('shop')}
+                      tog={() => toggle('shop')}
+                    />
+                  )}
+                  {cEnt > 0 && (
+                    <RedSlide
+                      l="Entertainment"
+                      e="🎮"
+                      cur={cEnt}
+                      val={newEnt !== null ? newEnt : cEnt}
+                      set={setNewEnt}
+                      com={commits.includes('ent')}
+                      tog={() => toggle('ent')}
+                    />
+                  )}
+
+                  <AddSlide
+                    l="Avoid Fees (overdraft, late payments)"
+                    e="🚫"
+                    val={fees}
+                    set={setFees}
+                    max={150}
+                    step={5}
+                    com={commits.includes('fees')}
+                    tog={() => toggle('fees')}
+                  />
+
+                  <AddSlide
+                    l="Negotiate Bills (phone, internet, insurance)"
+                    e="📞"
+                    val={neg}
+                    set={setNeg}
+                    max={100}
+                    step={5}
+                    com={commits.includes('neg')}
+                    tog={() => toggle('neg')}
+                  />
+
+                  <AddSlide
+                    l="Add Side Income"
+                    e="💰"
+                    val={side}
+                    set={setSide}
+                    max={1000}
+                    step={25}
+                    com={commits.includes('side')}
+                    tog={() => toggle('side')}
+                  />
+                </div>
+              </div>
+
+              {improve > 0 && (
+                <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white mb-6">
+                  <div className="flex items-center gap-3 mb-3">
+                    <Icon name="trending-up" className="w-7 h-7" />
+                    <div>
+                      <div className="text-sm opacity-90">New Safe-to-Spend</div>
+                      <div className="text-4xl font-bold">${fmt(newClear)}</div>
+                    </div>
+                  </div>
+
+                  <div className="bg-white bg-opacity-20 rounded-lg p-4 text-base font-semibold">
+                    🎯 You found <span className="text-xl">${fmt(improve)}</span> of breathing room per month
+                    <div className="text-sm mt-2 opacity-90">That's ${fmt(improve * 12)} per year</div>
+                  </div>
+
+                  {commits.length > 0 && (
+                    <div className="mt-4 bg-white bg-opacity-20 rounded-lg p-4">
+                      <div className="text-sm mb-2 flex items-center gap-2">
+                        <Icon name="check-circle" className="w-4 h-4" />
+                        <strong>You committed to try:</strong>
+                      </div>
+                      <ul className="m-0 pl-6 text-sm">
+                        {commits.map(c => (
+                          <li key={c} className="mb-1">
+                            {c === 'subs' && 'Cut subscriptions'}
+                            {c === 'eat' && 'Reduce eating out'}
+                            {c === 'shop' && 'Cut shopping'}
+                            {c === 'gas' && 'Reduce transportation'}
+                            {c === 'ent' && 'Cut entertainment'}
+                            {c === 'fees' && 'Avoid fees'}
+                            {c === 'neg' && 'Negotiate bills'}
+                            {c === 'side' && 'Add side income'}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <button
                 onClick={() => setStep(1)}
+                type="button"
                 className="w-full p-4 bg-white hover:bg-gray-50 text-purple-600 border-2 border-purple-600 rounded-xl text-base font-bold"
               >
                 ← Back to Edit Numbers
@@ -282,7 +585,7 @@
 
             <div className="bg-white bg-opacity-15 backdrop-blur-lg rounded-lg p-4 text-white text-xs text-center flex items-center justify-center gap-2">
               <Icon name="alert-circle" className="w-4 h-4" />
-              <span>This is educational only, not financial advice.</span>
+              <span>This is educational only, not financial advice. Consult a professional for personalized guidance.</span>
             </div>
           </div>
         </div>
