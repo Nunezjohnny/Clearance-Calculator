@@ -624,3 +624,17 @@
               <span className="font-semibold text-gray-900">${fmt(value)}/mo</span>
             </div>
             {value > 0
+&& (
+<div className="text-sm font-semibold text-green-600">
++${fmt(value)}/mo extra
+</div>
+)}
+</div>
+</div>
+);
+}
+ReactDOM.render(<ClearanceCalculator />, document.getElementById('root'));
+  </script>
+</body>
+</html>
+```
