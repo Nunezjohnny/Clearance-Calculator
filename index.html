@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Clearance - Find Your Breathing Room</title>
+
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide UMD (NOT lucide-react) -->
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+</head>
+
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // Lucide UMD icon helper for React
+    function Icon({ name, className }) {
+      return <i data-lucide={name} className={className}></i>;
+    }
+
+    function App() {
+      const [step, setStep] = useState(1);
+      const [showAdv, setShowAdv] = useState(false);
+
+      const [income, setIncome] = useState('');
+      const [freq, setFreq] = useState('monthly');
+
+      const [rent, setRent] = useState('');
+      const [util, setUtil] = useState('');
+      const [debt, setDebt] = useState('');
+      const [groc, setGroc] = useState('');
+      const [gas, setGas] = useState('');
+      const [subs, setSubs] = useState('');
+
+      const [ins, setIns] = useState('');
+      const [other, setOther] = useState('');
+      const [eat, setEat] = useState('');
+      const [shop, setShop] = useState('');
+      const [ent, setEnt] = useState('');
+      const [otherV, setOtherV] = useState('');
+
+      const [newSubs, setNewSubs] = useState(null);
+      const [newEat, setNewEat] = useState(null);
+      const [newShop, setNewShop] = useState(null);
+      const [newGas, setNewGas] = useState(null);
+      const [newEnt, setNewEnt] = useState(null);
+
+      const [fees, setFees] = useState(0);
+      const [neg, setNeg] = useState(0);
+      const [side, setSide] = useState(0);
+      const [commits, setCommits] = useState([]);
+
+      // IMPORTANT: Run Lucide after React renders icons
+      useEffect(() => {
+        if (window.lucide && window.lucide.createIcons) {
+          window.lucide.createIcons();
+        }
+      }, [step, showAdv]); // rerun when UI sections appear/disappear
+
+      const fmt = (n) => new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 }).format(n);
+      const p = (v) => parseFloat(v) || 0;
+
+      const monthInc =
+        freq === 'biweekly' ? (p(income) * 26) / 12 :
+        freq === 'twice-monthly' ? p(income) * 2 :
+        p(income);
+
+      const fixed = p(rent) + p(util) + p(debt) + p(ins) + p(other);
+
+      const cGas = p(gas), cGroc = p(groc), cSubs = p(subs), cEat = p(eat), cShop = p(shop), cEnt = p(ent), cOtherV = p(otherV);
+      const variable = cGas + cGroc + cSubs + cEat + cShop + cEnt + cOtherV;
+
+      const baseline = monthInc - fixed - variable;
+
+      const active = [
+        newSubs !== null && newSubs < cSubs,
+        newEat !== null && newEat < cEat,
+        newShop !== null && newShop < cShop,
+        newGas !== null && newGas < cGas,
+        newEnt !== null && newEnt < cEnt,
+        fees > 0, neg > 0, side > 0
+      ].filter(Boolean).length;
+
+      const savings =
+        (newSubs !== null ? cSubs - newSubs : 0) +
+        (newEat !== null ? cEat - newEat : 0) +
+        (newShop !== null ? cShop - newShop : 0) +
+        (newGas !== null ? cGas - newGas : 0) +
+        (newEnt !== null ? cEnt - newEnt : 0) +
+        fees + neg;
+
+      const newClear = baseline + savings + side;
+      const improve = newClear - baseline;
+
+      const complete = monthInc > 0 && (fixed > 0 || variable > 0);
+
+      const fill = (set, val) => set(val.toString());
+      const reset = () => {
+        setNewSubs(null); setNewEat(null); setNewShop(null); setNewGas(null); setNewEnt(null);
+        setFees(0); setNeg(0); setSide(0); setCommits([]);
+      };
+
+      const toggle = (n) => setCommits(commits.includes(n) ? commits.filter(c => c !== n) : [...commits, n]);
+
+      const Inp = ({ l, v, set }) => (
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">{l}</label>
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+            <input
+              type="number"
+              value={v}
+              onChange={e => set(e.target.value)}
+              className="w-full pl-7 pr-3 py-2.5 border-2 border-gray-300 rounded-lg outline-none focus:border-purple-500"
+              placeholder="0"
+            />
+          </div>
+        </div>
+      );
+
+      const InpAvg = ({ l, v, set, avg }) => (
+        <div>
+          <label className="block text-sm font-semibold text-gray-700 mb-1">{l}</label>
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-medium">$</span>
+              <input
+                type="number"
+                value={v}
+                onChange={e => set(e.target.value)}
+                className="w-full pl-7 pr-3 py-2.5 border-2 border-gray-300 rounded-lg outline-none focus:border-purple-500"
+                placeholder="0"
+              />
+            </div>
+            <button
+              onClick={() => fill(set, avg)}
+              className="px-3 py-2.5 bg-purple-100 hover:bg-purple-200 text-purple-700 rounded-lg text-sm font-semibold"
+            >
+              Avg
+            </button>
+          </div>
+        </div>
+      );
+
+      if (step === 1) {
+        return (
+          <div className="min-h-screen bg-gradient-to-br from-purple-600 to-purple-800 p-4 md:p-8">
+            <div className="max-w-4xl mx-auto">
+              <div className="text-center mb-8 text-white">
+                <h1 className="text-5xl font-bold mb-2">Clearance</h1>
+                <p className="text-xl opacity-95 font-medium">Let's see where you are right now</p>
+              </div>
+
+              <div className="bg-white rounded-2xl p-6 md:p-8 shadow-2xl">
+                <div className="mb-8">
+                  <h2 className="text-xl font-bold mb-2 text-gray-900 flex items-center gap-2">
+                    <Icon name="dollar-sign" className="w-6 h-6 text-purple-600" />
+                    Take-Home Pay
+                  </h2>
+
+                  <div className="flex gap-4 mb-4 flex-wrap">
+                    <div className="flex-1 min-w-[200px]">
+                      <Inp
+                        l={freq === 'monthly' ? 'Monthly Pay' : freq === 'biweekly' ? 'Per Paycheck (every 2 weeks)' : 'Per Paycheck (twice a month)'}
+                        v={income}
+                        set={setIncome}
+                      />
+                    </div>
+                    <div className="min-w-[200px]">
+                      <label className="block text-sm font-semibold text-gray-700 mb-1">Pay Frequency</label>
+                      <select
+                        value={freq}
+                        onChange={e => setFreq(e.target.value)}
+                        className="w-full p-2.5 border-2 border-gray-300 rounded-lg bg-white"
+                      >
+                        <option value="monthly">Monthly</option>
+                        <option value="biweekly">Biweekly (every 2 weeks)</option>
+                        <option value="twice-monthly">Twice a month</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  {freq !== 'monthly' && monthInc > 0 && (
+                    <div className="text-sm text-purple-600 bg-purple-50 p-3 rounded-lg">
+                      ≈ ${fmt(monthInc)}/month
+                    </div>
+                  )}
+                </div>
+
+                <div className="mb-8 pt-8 border-t-2 border-gray-200">
+                  <h2 className="text-xl font-bold mb-2 text-gray-900">Essential Monthly Bills</h2>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Inp l="Rent/Mortgage" v={rent} set={setRent} />
+                    <Inp l="Utilities" v={util} set={setUtil} />
+                    <Inp l="Debt Minimums" v={debt} set={setDebt} />
+                    <InpAvg l="Groceries" v={groc} set={setGroc} avg={400} />
+                    <InpAvg l="Gas/Transportation" v={gas} set={setGas} avg={150} />
+                    <InpAvg l="Subscriptions (Optional)" v={subs} set={setSubs} avg={50} />
+                  </div>
+                </div>
+
+                <div className="mb-8 pt-8 border-t-2 border-gray-200">
+                  <button
+                    onClick={() => setShowAdv(!showAdv)}
+                    className="w-full flex items-center justify-between text-left mb-4 p-3 bg-gray-50 hover:bg-gray-100 rounded-lg"
+                  >
+                    <span className="text-lg font-bold text-gray-900">Advanced (Optional)</span>
+                    <Icon name={showAdv ? "chevron-up" : "chevron-down"} className="w-5 h-5 text-gray-700" />
+                  </button>
+
+                  {showAdv && (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <Inp l="Insurance" v={ins} set={setIns} />
+                      <Inp l="Other Fixed Bills" v={other} set={setOther} />
+                      <InpAvg l="Eating Out/Delivery" v={eat} set={setEat} avg={250} />
+                      <InpAvg l="Shopping/Clothes" v={shop} set={setShop} avg={100} />
+                      <InpAvg l="Entertainment" v={ent} set={setEnt} avg={80} />
+                      <Inp l="Other Spending" v={otherV} set={setOtherV} />
+                    </div>
+                  )}
+                </div>
+
+                {complete && (
+                  <div className={`rounded-xl p-8 mb-6 text-white text-center ${baseline >= 0 ? 'bg-gradient-to-br from-purple-600 to-purple-800' : 'bg-gradient-to-br from-pink-500 to-red-500'}`}>
+                    <div className="text-sm uppercase tracking-wider opacity-90 font-semibold mb-2">
+                      {baseline >= 0 ? 'Safe-to-Spend (This Month)' : "You're Short By"}
+                    </div>
+                    <div className="text-6xl font-bold mb-2">${fmt(Math.abs(baseline))}</div>
+                    <div className="text-sm opacity-80 bg-white bg-opacity-15 p-3 rounded-lg">
+                      Income: ${fmt(monthInc)} − Fixed: ${fmt(fixed)} − Variable: ${fmt(variable)}
+                    </div>
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setStep(2)}
+                  disabled={!complete}
+                  className={`w-full p-4 rounded-xl text-lg font-bold flex items-center justify-center gap-2 ${
+                    complete ? 'bg-gradient-to-br from-purple-600 to-purple-800 text-white hover:shadow-lg cursor-pointer' : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  Find Breathing Room
+                  <Icon name="chevron-right" className="w-6 h-6" />
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      // Step 2 (kept simple for this fix)
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-purple-600 to-purple-800 p-4 md:p-8">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-8 text-white">
+              <h1 className="text-5xl font-bold mb-2">Clearance</h1>
+              <p className="text-xl opacity-95 font-medium">Your what-if screen renders now ✅</p>
+            </div>
+
+            <div className="bg-white rounded-2xl p-6 md:p-8 shadow-2xl mb-6">
+              <div className="rounded-xl p-8 mb-6 text-white text-center bg-gradient-to-br from-purple-600 to-purple-800">
+                <div className="text-sm uppercase tracking-wider opacity-90 font-semibold mb-2">
+                  Current Safe-to-Spend
+                </div>
+                <div className="text-6xl font-bold mb-2">${fmt(Math.abs(baseline))}</div>
+              </div>
+
+              <button
+                onClick={() => setStep(1)}
+                className="w-full p-4 bg-white hover:bg-gray-50 text-purple-600 border-2 border-purple-600 rounded-xl text-base font-bold"
+              >
+                ← Back to Edit Numbers
+              </button>
+            </div>
+
+            <div className="bg-white bg-opacity-15 backdrop-blur-lg rounded-lg p-4 text-white text-xs text-center flex items-center justify-center gap-2">
+              <Icon name="alert-circle" className="w-4 h-4" />
+              <span>This is educational only, not financial advice.</span>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
